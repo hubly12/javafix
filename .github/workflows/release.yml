@@ -10,6 +10,21 @@ permissions:
   contents: read
 
 jobs:
+  probe-class:
+    # The binary embeds probe/JavafixProbe.class; prove it is exactly what the committed source compiles to.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - run: |
+          mkdir out
+          javac --release 8 -Xlint:-options -d out probe/JavafixProbe.java
+          cmp out/JavafixProbe.class probe/JavafixProbe.class
+          java -cp out JavafixProbe dv-g3b-emudhra.we-have-a-problem.com sessionserver.mojang.com
+
   test:
     strategy:
       matrix:
@@ -21,7 +36,7 @@ jobs:
 
   build:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
+    needs: [test, probe-class]
     strategy:
       matrix:
         include:

@@ -61,7 +61,7 @@ mod tests {
         let file = fake_jdk(&root, "jdk", &original);
 
         let rt = inspect(&file).unwrap();
-        assert_eq!((rt.state, rt.missing.len()), (State::Vulnerable, 15));
+        assert_eq!((rt.state, rt.missing.len()), (State::NotBlocked, 15));
         apply(&rt).unwrap();
         apply(&inspect(&file).unwrap()).unwrap();
 
@@ -70,7 +70,7 @@ mod tests {
         assert_eq!(after.lines().filter(|l| l.len() == 64).count(), 16);
         assert_eq!(fs::read_to_string(backup_path(&file)).unwrap(), original);
         let rt = inspect(&file).unwrap();
-        assert_eq!(rt.state, State::Protected);
+        assert_eq!(rt.state, State::Blocked);
         assert!(rt.has_backup);
 
         restore(&rt).unwrap();

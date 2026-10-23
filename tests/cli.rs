@@ -48,7 +48,8 @@ fn backup(file: &Path) -> PathBuf {
 fn nothing_happens_without_consent() {
     let root = temp_dir("decline");
     let file = fake_jdk(&root.join("jdks"), "a", &format!("{HEADER}\n"));
-    for input in ["3\n\n", "1\nn\n\n", "1\ny\nno\n\n", "", "1\nY"] {
+    // menu quit, scan no, scan yes + live no + fix no, scan yes + live no + no answer, no input, cut off
+    for input in ["3\n\n", "1\nn\n\n", "1\ny\nno\nno\n\n", "1\ny\nn\n\n", "", "1\nY"] {
         let (_, out) = run(&root, &[], input);
         assert_eq!(fs::read_to_string(&file).unwrap(), format!("{HEADER}\n"), "input {input:?}\n{out}");
         assert!(!backup(&file).exists());
@@ -70,7 +71,7 @@ fn check_fix_and_restore_round_trip() {
     let mut perms = fs::metadata(&locked).unwrap().permissions();
     perms.set_readonly(true);
     fs::set_permissions(&locked, perms).unwrap();
-    // `done` has one of 16; give it all so it counts as protected.
+    // `done` has one of 16; give it all so its block list counts as applied.
     let all = include_str!("../src/fingerprints.rs")
         .lines()
         .filter_map(|l| l.trim().strip_prefix('"').map(|s| s[..64].to_string()))
@@ -80,12 +81,13 @@ fn check_fix_and_restore_round_trip() {
 
     let (code, out) = run(&root, &["--check"], "");
     assert_eq!(code, 2, "{out}");
-    assert!(out.contains("4 runtimes — 1 protected, 2 vulnerable, 0 need an app update, 1 unknown"), "{out}");
+    assert!(out.contains("4 runtimes — 1 blocklist applied, 2 blocklist missing, 0 need an app update, 1 unknown format"), "{out}");
     assert!(out.contains("(needs administrator)"), "{out}");
 
-    // scan yes, fix yes, elevation no
-    let (_, out) = run(&root, &[], "1\ny\ny\nn\n\n");
-    assert!(out.contains("1 fixed, 0 failed"), "{out}");
+    // scan yes, live check no, fix yes, elevation no
+    let (_, out) = run(&root, &[], "1\ny\nn\ny\nn\n\n");
+    assert!(out.contains("1 block lists updated, 0 failed"), "{out}");
+    assert!(!out.contains("Running the live check"), "{out}");
     let fixed = fs::read_to_string(&open).unwrap();
     assert!(fixed.starts_with(&format!("{HEADER}\nAAAA\n")));
     assert!(all.iter().all(|f| fixed.contains(f.as_str())));
@@ -96,7 +98,7 @@ fn check_fix_and_restore_round_trip() {
 
     let (code, out) = run(&root, &["--check"], "");
     assert_eq!(code, 2, "locked one is still open\n{out}");
-    assert!(out.contains("2 protected, 1 vulnerable"), "{out}");
+    assert!(out.contains("2 blocklist applied, 1 blocklist missing"), "{out}");
 
     // restore: scan yes, restore yes
     let (_, out) = run(&root, &["--restore"], "y\ny\n\n");

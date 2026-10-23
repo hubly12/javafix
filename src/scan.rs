@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
-    /// All 16 certificates are blocked.
-    Protected,
+    /// All 16 certificates are in the block list. Says nothing about the rest of the trust store.
+    Blocked,
     /// Some are missing and the file can be patched.
-    Vulnerable,
+    NotBlocked,
     /// Some are missing, but the runtime lives inside a signed macOS .app; the app must be updated instead.
     AppBundle,
     /// The file does not look like a SHA-256 block list; left alone.
@@ -85,11 +85,11 @@ pub fn inspect(file: &Path) -> Option<Runtime> {
     } else {
         let m = missing(&text);
         if m.is_empty() {
-            (State::Protected, m)
+            (State::Blocked, m)
         } else if cfg!(target_os = "macos") && in_app_bundle(file) {
             (State::AppBundle, m)
         } else {
-            (State::Vulnerable, m)
+            (State::NotBlocked, m)
         }
     };
     Some(Runtime {
@@ -193,7 +193,7 @@ pub mod tests {
         let names: Vec<_> = found.iter().map(|r| (r.home.file_name().unwrap().to_string_lossy().into_owned(), r.state)).collect();
         assert_eq!(
             names,
-            vec![("done".into(), State::Protected), ("odd".into(), State::Unknown), ("open".into(), State::Vulnerable)]
+            vec![("done".into(), State::Blocked), ("odd".into(), State::Unknown), ("open".into(), State::NotBlocked)]
         );
         let open = &found[2];
         assert_eq!(open.version, "21.0.3+9");
