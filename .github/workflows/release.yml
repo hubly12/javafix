@@ -33,7 +33,7 @@ jobs:
             out: javafix-windows-arm64.exe
           - os: macos-latest
             target: universal
-            out: javafix-macos-universal
+            out: javafix-macos-universal.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -50,9 +50,19 @@ jobs:
           rustup target add x86_64-apple-darwin aarch64-apple-darwin
           cargo build --locked --release --target x86_64-apple-darwin
           cargo build --locked --release --target aarch64-apple-darwin
-          mkdir -p dist
-          lipo -create -output dist/${{ matrix.out }} target/x86_64-apple-darwin/release/javafix target/aarch64-apple-darwin/release/javafix
-          codesign --force --sign - dist/${{ matrix.out }}
+          # A bare binary loses its executable bit when downloaded and Finder opens it in TextEdit.
+          # A zip keeps the bit, and the .command name makes a double-click run it in Terminal.
+          mkdir -p dist/javafix-macos
+          lipo -create -output dist/javafix-macos/javafix.command target/x86_64-apple-darwin/release/javafix target/aarch64-apple-darwin/release/javafix
+          chmod 755 dist/javafix-macos/javafix.command
+          codesign --force --sign - dist/javafix-macos/javafix.command
+          (cd dist && ditto -c -k --keepParent javafix-macos ${{ matrix.out }})
+          # Check what users get: unpacked file is executable, universal, and runs.
+          mkdir unpacked && ditto -x -k dist/${{ matrix.out }} unpacked
+          test -x unpacked/javafix-macos/javafix.command
+          lipo -archs unpacked/javafix-macos/javafix.command
+          codesign --verify --verbose unpacked/javafix-macos/javafix.command
+          unpacked/javafix-macos/javafix.command --version
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.out }}

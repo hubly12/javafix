@@ -67,13 +67,13 @@ Java는 이 인증서들의 상위 루트를 아직 믿기 때문에, 공격자�
 |---|---|
 | Windows (대부분의 PC) | `javafix-windows-x64.exe` |
 | Windows (ARM 노트북) | `javafix-windows-arm64.exe` |
-| macOS (Intel / Apple Silicon 공통) | `javafix-macos-universal` |
+| macOS (Intel / Apple Silicon 공통) | `javafix-macos-universal.zip` |
 
 받은 파일이 원본인지 확인하려면 `SHA256SUMS`의 값과 비교하세요.
 
 ```
 certutil -hashfile javafix-windows-x64.exe SHA256      (Windows)
-shasum -a 256 javafix-macos-universal                  (macOS)
+shasum -a 256 javafix-macos-universal.zip              (macOS)
 ```
 
 **Windows**
@@ -83,16 +83,24 @@ shasum -a 256 javafix-macos-universal                  (macOS)
 
 **macOS**
 
-애플 공증(notarization)을 받지 않은 프로그램이라 처음 한 번은 아래처럼 실행합니다.
+1. `javafix-macos-universal.zip`을 받아 압축을 풉니다(Safari는 자동으로 풉니다). `javafix-macos` 폴더가 생깁니다.
+2. 폴더 안의 `javafix.command`를 더블클릭하면 터미널이 열리고 실행됩니다.
+3. 애플 공증(notarization)을 받지 않은 프로그램이라 처음에는 "확인되지 않은 개발자" 경고가 뜹니다.
+   - macOS 15(Sequoia) 이상: 경고 창을 닫고 **시스템 설정 → 개인정보 보호 및 보안** 맨 아래의
+     **"그래도 열기"**를 누른 뒤 다시 더블클릭합니다.
+   - macOS 14 이하: `javafix.command`를 **우클릭 → 열기 → 열기**를 누릅니다.
+
+터미널에서 바로 실행하려면:
 
 ```
-cd ~/Downloads
-xattr -d com.apple.quarantine javafix-macos-universal
-chmod +x javafix-macos-universal
-./javafix-macos-universal
+cd ~/Downloads/javafix-macos
+xattr -d com.apple.quarantine javafix.command
+./javafix.command
 ```
 
-또는 Finder에서 파일을 **우클릭 → 열기**를 선택해도 됩니다.
+> `v0.1.0`의 압축되지 않은 `javafix-macos-universal` 파일은 내려받으면 실행 권한이 사라져서, 더블클릭하면
+> 텍스트 편집기가 "텍스트 인코딩 유니코드(UTF-8)이(가) 적용되지 않습니다" 오류를 띄웁니다. `v0.1.1`부터 zip으로 배포합니다.
+> 그 파일을 이미 받았다면 터미널에서 `chmod +x javafix-macos-universal` 후 `./javafix-macos-universal`로 실행할 수 있습니다.
 
 ## 4. 실행 화면 순서
 
@@ -184,7 +192,7 @@ cargo build --release          # target/release/javafix(.exe)
 ```
 
 GitHub에 `v*` 태그를 올리면 `.github/workflows/release.yml`이 Windows·macOS·Linux에서 테스트를 돌리고,
-Windows x64/ARM64 exe와 macOS 통합 바이너리를 빌드해 `SHA256SUMS`와 함께 릴리스에 올립니다.
+Windows x64/ARM64 exe와 macOS 통합 바이너리(zip)를 빌드해 `SHA256SUMS`와 함께 릴리스에 올립니다.
 GitHub 공식 액션(checkout, upload/download-artifact)만 사용합니다.
 
 소스 구성
@@ -260,8 +268,15 @@ javafix --scan-root <dir>    scan a specific folder (repeatable)
 javafix --no-pause           do not wait for Enter at the end
 ```
 
-macOS: the binary is not notarized. Right-click → Open, or run
-`xattr -d com.apple.quarantine javafix-macos-universal` before running it from Terminal.
+macOS: download `javafix-macos-universal.zip`, unzip it and double-click `javafix-macos/javafix.command`
+(it opens in Terminal). The binary is not notarized.
+- On macOS 15 or later, allow it under System Settings → Privacy & Security → "Open Anyway".
+- On macOS 14 or earlier, use right-click → Open.
+- From Terminal: `xattr -d com.apple.quarantine javafix.command && ./javafix.command`.
+
+The plain (not zipped) `javafix-macos-universal` file of v0.1.0 loses its executable bit when downloaded. Finder then opens it
+in TextEdit ("text encoding Unicode (UTF-8) isn't applicable"). Use the zip from v0.1.1 on, or run `chmod +x` on that
+file first.
 Windows: the binary is not code-signed. Choose "More info → Run anyway" in SmartScreen.
 
 ### Building
@@ -274,7 +289,7 @@ cargo build --release
 Pushing a `v*` tag runs `.github/workflows/release.yml`, which does the following:
 
 - tests on Windows, macOS and Linux;
-- builds Windows x64/ARM64 and a macOS universal binary;
+- builds Windows x64/ARM64 and a zipped macOS universal binary;
 - publishes a release with `SHA256SUMS`.
 
 ### License

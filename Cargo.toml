@@ -1,6 +1,6 @@
 [package]
 name = "javafix"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.74"
 description = "Finds Java runtimes on Windows and macOS and, with the user's consent, blocks the certificates behind CVE-2026-91403."
