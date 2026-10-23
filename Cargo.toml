@@ -1,0 +1,21 @@
+[package]
+name = "javafix"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Finds Java runtimes on Windows and macOS and, with the user's consent, blocks the certificates behind CVE-2026-91403."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/hubly12/javafix"
+keywords = ["java", "security", "cve", "certificates", "minecraft"]
+categories = ["command-line-utilities"]
+
+# No dependencies on purpose: the whole tool can be audited by reading src/.
+[dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
